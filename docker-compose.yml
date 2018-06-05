@@ -1,0 +1,84 @@
+####
+# ATENTION:
+# Replace all occurences of api with your project's name
+####
+
+# v2 syntax
+version: '2'
+
+# Named volumes
+volumes:
+  # Postgres Data
+  api-postgres-data:
+    driver: local
+
+  # MySQL Data
+  api-mysql-data:
+    driver: local
+
+  # Redis Data
+  api-redis-data:
+    driver: local
+
+services:
+  # Postgres (10.3)
+  postgres:
+    image: postgres:10.3
+    container_name: api-postgres
+    volumes:
+      - api-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=api
+      - POSTGRES_DB=api
+      - POSTGRES_USER=api
+
+  # MySQL (5.7)
+  mysql:
+    image: mysql:5.7
+    container_name: api-mysql
+    volumes:
+      - api-mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=api
+      - MYSQL_DATABASE=api
+      - MYSQL_USER=api
+      - MYSQL_PASSWORD=api
+
+  # Redis
+  cache:
+    image: redis:4.0
+    container_name: api-redis
+    command: --appendonly yes
+    volumes:
+      - api-redis-data:/data
+    ports:
+      - "6379:6379"
+
+  # PHP (with Nginx)
+  # you can change from nginx to apache, just change session 'image'
+  app:
+    image: ambientum/php:7.2-nginx
+    container_name: api-app
+    volumes:
+      - .:/var/www/app
+    ports:
+      - "80:8080"
+    links:
+      - postgres
+      - mysql
+      - cache
+
+  # Laravel Queues
+  queue:
+    image: ambientum/php:7.2
+    container_name: api-queue
+    command: php artisan queue:listen
+    volumes:
+      - .:/var/www/app
+    links:
+      - mysql
+      - cache
